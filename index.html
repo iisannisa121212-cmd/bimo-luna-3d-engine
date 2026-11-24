@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Bimo & Luna — Blocky Kids Studio</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+*{box-sizing:border-box}body{margin:0;background:#101522;color:#f4f6fb}
+header{padding:14px 16px;background:#171f31;border-bottom:1px solid #303b52}
+h1{font-size:18px;margin:0 0 4px}p{margin:0;color:#aebbd0;font-size:12px}
+main{max-width:980px;margin:auto;padding:14px}
+#stage{position:relative;width:100%;aspect-ratio:9/16;max-height:72vh;background:#080d18;border:1px solid #39445a;border-radius:16px;overflow:hidden;margin:auto}
+canvas{width:100%;height:100%;display:block}
+#overlay{position:absolute;inset:0;pointer-events:none;display:flex;flex-direction:column;justify-content:space-between;padding:16px}
+#episode{font-size:12px;letter-spacing:1.4px;color:#d9e5ff;text-shadow:0 2px 5px #000}
+#dialogue{align-self:center;max-width:94%;padding:11px 15px;border-radius:14px;background:#101827df;border:1px solid #d9e5ff88;text-align:center;font-weight:800;font-size:clamp(15px,3.5vw,22px);text-shadow:0 2px 2px #000;box-shadow:0 6px 22px #0008}
+#time{font-size:12px;text-align:right;color:#d9e5ff;text-shadow:0 2px 4px #000}
+.controls{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+button{border:0;border-radius:12px;padding:12px 15px;font-weight:750;background:#3276e8;color:white}
+button.secondary{background:#29364d;color:#e7efff}button:disabled{opacity:.45}
+.note{background:#1b263a;border:1px solid #34435f;padding:12px;border-radius:12px;color:#c7d3e7;font-size:13px;line-height:1.5}
+.small{font-size:11px;color:#91a2bc;margin-top:8px}
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
+</script>
+</head>
+<body>
+<header><h1>🎬 Bimo & Luna — Blocky Kids Studio</h1><p>Prototype mesin animasi 3D • episode zombie • 9:16</p></header>
+<main>
+<div id="stage">
+ <div id="overlay"><div id="episode">BIMO & LUNA ADVENTURES</div><div id="dialogue">Tekan Putar Cerita untuk mulai!</div><div id="time">00:00 / 00:45</div></div>
+</div>
+<div class="controls">
+ <button id="play">▶ Putar Cerita</button>
+ <button id="record" class="secondary">● Rekam WebM</button>
+ <button id="reset" class="secondary">↺ Ulangi</button>
+</div>
+<div class="note"><b>Yang sudah bisa dicoba:</b> karakter blocky orisinal Bimo dan Luna, rumah, zombie kartun, gerakan lari, masuk rumah, jebakan, kamera sinematik, dialog karakter, dan kejutan di akhir.<br><br><b>Catatan:</b> tombol rekam menghasilkan WebM (belum MP4). Audio dialog, editor naskah, dan otomatisasi dari Claude akan menjadi tahap pengembangan berikutnya.</div>
+<div class="small">Butuh koneksi internet untuk memuat Three.js dari CDN. Jalankan melalui halaman web/hosting, bukan selalu langsung dari file ZIP.</div>
+</main>
+<script type="module">
+import * as THREE from 'three';
+const stage=document.querySelector('#stage');
+const scene=new THREE.Scene(); scene.background=new THREE.Color(0x111b2b); scene.fog=new THREE.Fog(0x111b2b,18,45);
+const camera=new THREE.PerspectiveCamera(42,9/16,.1,100); camera.position.set(0,5.4,13); camera.lookAt(0,1.5,0);
+const renderer=new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,1.8)); renderer.setSize(stage.clientWidth,stage.clientHeight); renderer.shadowMap.enabled=true; renderer.shadowMap.type=THREE.PCFSoftShadowMap; stage.prepend(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xc8ddff,0x28321f,2));
+const key=new THREE.DirectionalLight(0xffe0b0,3); key.position.set(-5,10,7); key.castShadow=true; scene.add(key);
+const mat=(c,rough=.8)=>new THREE.MeshStandardMaterial({color:c,roughness:rough});
+const mats={blue:mat(0x2375d8),purple:mat(0x873fd1),black:mat(0x202532),white:mat(0xf2f3f7),skin:mat(0xffc99c),dark:mat(0x26303c),zombie:mat(0x78b66c),wood:mat(0x80512e),roof:mat(0x35435b),grass:mat(0x344b3b),eye:mat(0x101018),glow:mat(0xb7ff8a),rope:mat(0xd5bd7a)};
+function cube(parent,w,h,d,material,x,y,z){const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),material);m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;parent.add(m);return m}
+const ground=cube(scene,40,.3,40,mats.grass,0,-.2,0);
+function makeChar(name,shirt,pants,skin){
+ const g=new THREE.Group();scene.add(g);
+ const torso=cube(g,.85,1,.42,shirt,0,1.65,0);
+ const head=cube(g,.72,.72,.72,skin,0,2.55,0);
+ cube(g,.12,.12,.05,mats.eye,-.17,2.62,.38);cube(g,.12,.12,.05,mats.eye,.17,2.62,.38);
+ const mouth=cube(g,.2,.045,.04,mats.black,0,2.42,.39);
+ const armL=new THREE.Group();armL.position.set(-.53,2,0);g.add(armL);cube(armL,.28,.85,.3,shirt,0,-.42,0);
+ const armR=new THREE.Group();armR.position.set(.53,2,0);g.add(armR);cube(armR,.28,.85,.3,shirt,0,-.42,0);
+ const legL=new THREE.Group();legL.position.set(-.23,1.15,0);g.add(legL);cube(legL,.32,.8,.34,pants,0,-.38,0);
+ const legR=new THREE.Group();legR.position.set(.23,1.15,0);g.add(legR);cube(legR,.32,.8,.34,pants,0,-.38,0);
+ g.userData={armL,armR,legL,legR,torso,head};g.name=name;return g;
+}
+const bimo=makeChar('Bimo',mats.blue,mats.black,mats.skin);bimo.position.set(-1.15,0,2);
+const luna=makeChar('Luna',mats.purple,mats.white,mats.skin);luna.position.set(1.15,0,2);
+function makeZombie(x,z){const g=new THREE.Group();scene.add(g);cube(g,.8,1,.42,mats.zombie,0,1.6,0);cube(g,.7,.7,.7,mats.zombie,0,2.5,0);cube(g,.12,.13,.05,mats.eye,-.17,2.58,.38);cube(g,.12,.13,.05,mats.eye,.17,2.58,.38);cube(g,.3,.07,.05,mats.black,0,2.34,.39);cube(g,.27,.85,.3,mats.zombie,-.55,1.8,0);cube(g,.27,.85,.3,mats.zombie,.55,1.8,0);cube(g,.32,.8,.34,mats.dark,-.22,.75,0);cube(g,.32,.8,.34,mats.dark,.22,.75,0);g.position.set(x,0,z);return g}
+const zombies=[makeZombie(-2,-7),makeZombie(1,-9),makeZombie(3,-11)];
+// House in the background/right
+const house=new THREE.Group();scene.add(house);house.position.set(0,0,-5);
+cube(house,6,4,4,mats.wood,0,2,0);const roof=cube(house,6.8,.45,4.8,mats.roof,0,4.2,0);roof.rotation.z=0;
+const door=cube(house,1.25,2.3,.12,mats.dark,0,1.25,2.06);
+cube(house,.14,.14,.14,mats.glow,.42,1.25,2.15);
+// roof-like sloped silhouette
+const trap=cube(house,2.4,.18,.5,mats.rope,0,3.2,1.7);trap.rotation.z=.15;
+const crate=cube(house,1.2,1.2,1.2,mats.wood,3,0.6,-1);
+function tree(x,z){const t=new THREE.Group();scene.add(t);cube(t,.45,2,.45,mats.wood,0,1,0);cube(t,2,2,2,mat(0x244a3b),0,2.7,0);t.position.set(x,0,z)}
+for(let i=0;i<8;i++){tree(-8+i*2.2,-12-(i%2)*3);tree(-8+i*2.2,5+(i%2)*2)}
+let start=0,playing=false,raf=0,recorder=null,chunks=[];
+const duration=45;
+const dialogue=[
+[0,5,'Bimo: "LUNA! LARI! ADA ZOMBIE!"'],
+[5,11,'Luna: "MASUK KE RUMAH ITU, CEPAT!"'],
+[11,17,'Bimo: "KUNCI PINTUNYA! MEREKA DEKAT!"'],
+[17,25,'Luna: "Kita pasang jebakan di atas pintu!"'],
+[25,32,'Bimo: "Aku tarik talinya saat mereka masuk!"'],
+[32,38,'Luna: "BERHASIL! Kita aman!"'],
+[38,45,'Bimo: "Luna... kalau itu zombie, siapa yang di belakang kita?"']
+];
+function smooth(a,b,t){return THREE.MathUtils.clamp((t-a)/(b-a),0,1)}
+function update(t){
+ const run=t<11, inside=t>=11;
+ [bimo,luna].forEach((c,i)=>{const u=c.userData;let phase=t*10+i;
+  if(t<11){c.position.z=2-3.3*smooth(0,11,t);c.position.x=(i===0?-1.15:1.15)+Math.sin(phase)*.08;}
+  else {c.position.z=-2.5;c.position.x=i===0?-.8:.8;}
+  const swing=run?Math.sin(phase)*.65:(t>17&&t<32?Math.sin(phase)*.18:0);
+  u.legL.rotation.x=swing;u.legR.rotation.x=-swing;u.armL.rotation.x=-swing*.8;u.armR.rotation.x=swing*.8;
+  if(t>38){c.rotation.y=.5;c.position.x+=(i===0?-.002:.002);}
+ });
+ zombies.forEach((z,i)=>{z.position.z=t<11?-7+4.3*smooth(0,11,t):-2.8;z.position.x=[-2,1,3][i]+Math.sin(t*5+i)*.12;});
+ door.rotation.y=t>11&&t<17?-.9:0;
+ crate.position.x=t>17&&t<32?1.7:3;
+ if(t>32){zombies[0].position.set(0,0,-1.7);zombies[0].scale.setScalar(.8);}
+ if(t>38){zombies[0].position.set(2.1,0,-.2);zombies[0].rotation.y=Math.PI;}
+ camera.position.x=t<11?Math.sin(t*.3)*.5:0;camera.position.z=t<11?13: t>38?10.8:12.5;
+ camera.lookAt(0,1.7,t>38?-.6:-1.5);
+ const d=[...dialogue].reverse().find(x=>t>=x[0]);document.querySelector('#dialogue').textContent=d?d[2]:'';
+ document.querySelector('#time').textContent=`00:${String(Math.floor(t)).padStart(2,'0')} / 00:45`;
+}
+function frame(now){if(!playing)return;let t=Math.min((now-start)/1000,duration);update(t);renderer.render(scene,camera);if(t>=duration){playing=false;document.querySelector('#play').textContent='▶ Putar Lagi';return;}raf=requestAnimationFrame(frame)}
+function play(){cancelAnimationFrame(raf);start=performance.now();playing=true;document.querySelector('#play').textContent='Ⅱ Memutar...';frame(start)}
+document.querySelector('#play').onclick=play;
+document.querySelector('#reset').onclick=()=>{playing=false;cancelAnimationFrame(raf);update(0);renderer.render(scene,camera);document.querySelector('#play').textContent='▶ Putar Cerita'};
+document.querySelector('#record').onclick=()=>{
+ if(!window.MediaRecorder||!renderer.domElement.captureStream){alert('Perekaman tidak didukung browser ini.');return;}
+ if(recorder&&recorder.state==='recording'){recorder.stop();document.querySelector('#record').textContent='● Rekam WebM';return;}
+ chunks=[];const stream=renderer.domElement.captureStream(30);
+ const mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
+ recorder=new MediaRecorder(stream,{mimeType:mime});recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+ recorder.onstop=()=>{const blob=new Blob(chunks,{type:'video/webm'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download='bimo-luna-episode-01.webm';a.click();setTimeout(()=>URL.revokeObjectURL(url),3000)};
+ recorder.start();document.querySelector('#record').textContent='■ Stop & Simpan';play();
+};
+function resize(){const w=stage.clientWidth,h=stage.clientHeight;camera.aspect=w/h;camera.updateProjectionMatrix();renderer.setSize(w,h)}
+new ResizeObserver(resize).observe(stage);update(0);renderer.render(scene,camera);
+</script>
+</body>
+</html>
